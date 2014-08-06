@@ -36,10 +36,10 @@ do
 		exit 0
 		;;
 	v)
-		VERBOSE_ARG=1
+		VERBOSE=1
 		;;
 	f)
-		FORCE_ARG=1
+		FORCE=1
 		;;
 	r)
 		REPO=$OPTARG
