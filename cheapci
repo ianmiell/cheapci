@@ -28,7 +28,7 @@ TESTDIR="."
 TESTCOMMAND="./test.sh"
 MAILCMD="mail"
 
-while getopts "h?vfm:n:d:r:l:" opt
+while getopts "h?vfm:n:d:r:l:c:" opt
 do
 	case "$opt" in
 	h|\?)
@@ -55,6 +55,9 @@ do
 		;;
 	l)
 		LOCAL_CHECKOUT=$OPTARG
+		;;
+	c)
+		TESTCOMMAND=$OPTARG
 		;;
 	esac
 done
