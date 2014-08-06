@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# Simple CI
+
+function show_help() {
+	cat > /dev/stdout << END
+$0 [-m <email>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h] -r <repo> -l <local_checkout>
+
+-h - show help
+-m - email to send using "mail" command (default logs to stdout)
+-n - name for ci (unique, must be a valid directory name), eg myproj, (default=ci)
+-d - directory within repository to navigate to, (default=.)
+-c - test command to run from -d directory (default=./test.sh)
+-f - force a run even if repo has no updates (default off)
+-v - verbose logging (default off)
+-r - git repository, eg https://github.com/myname/myproj (required)
+-l - local checkout (that gets updated to determine whether a run is needed) (required)
+END
+}
+
+# Defaults
+FORCE=0
+VERBOSE=0
+REPO=""
+EMAIL=""
+NAME="ci"
+TESTDIR="."
+TESTCOMMAND="./test.sh"
+MAILCMD="mail"
+
+while getopts "h?vfm:n:d:r:l:" opt
+do
+	case "$opt" in
+	h|\?)
+		show_help
+		exit 0
+		;;
+	v)
+		VERBOSE_ARG=1
+		;;
+	f)
+		FORCE_ARG=1
+		;;
+	r)
+		REPO=$OPTARG
+		;;
+	m)
+		EMAIL=$OPTARG
+		;;
+	n)
+		NAME=$OPTARG
+		;;
+	d)
+		TESTDIR=$OPTARG
+		;;
+	l)
+		LOCAL_CHECKOUT=$OPTARG
+		;;
+	esac
+done
+
+shift $((OPTIND-1))
+
+if [[ $REPO = "" ]]
+then
+	show_help
+	exit 1
+fi
+
+
+# To force a run even if no updates.
+
+if [[ $VERBOSE -gt 0 ]]
+then
+	set +x
+fi
+
+BUILD_DIR="/tmp/${NAME}/${NAME}_builddir"
+mkdir -p $BUILD_DIR
+LOGFILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
+BUILDLOGFILE="${BUILD_DIR}/${NAME}_build.log.txt"
+touch $BUILDLOGFILE
+
+echo $(date) 2>&1 | tee -a $BUILDLOGFILE
+
+# Lockfile
+LOCKFILE="${BUILD_DIR}/${NAME}ci.lck"
+if [[ -a $LOCKFILE ]]
+then
+	echo "Already running" | tee -a $BUILDLOGFILE
+	exit 
+else
+	touch $LOCKFILE
+	# Fetch changes
+	pushd $LOCAL_CHECKOUT
+	git fetch origin master 2>&1 | tee -a $BUILDLOGFILE
+	# See if there are any incoming changes
+	updates=$(git log HEAD..origin/master --oneline | wc -l)
+	echo "Updates: $updates" | tee -a $BUILDLOGFILE
+	if [[ $updates -gt 0 ]] || [[ $FORCE -gt 0 ]]
+	then
+		touch $LOGFILE
+		pushd $LOCAL_CHECKOUT
+		echo "Pulling" | tee -a $LOGFILE
+		git pull origin master 2>&1 | tee -a $LOGFILE
+		popd
+		# This won't exist in a bit so no point pushd'ing
+		pushd $BUILD_DIR
+		# Clone to NAME
+		git clone $REPO $NAME
+		popd
+		pushd ${BUILD_DIR}/${NAME}/${TESTDIR}
+		$TEST_CMD >> ${LOGFILE} 2>&1
+		EXIT_CODE=$?
+		popd
+	        if [[ $EXIT_CODE -ne 0 ]]
+		then
+			msg="ANGRY $NAME"
+		else
+			msg="HAPPY $NAME"
+		fi
+		if [[ $MAIL != "" ]] && [[ $MAILCMD != "" ]]
+		then
+			echo $msg | $MAILCMD -s "$msg" $EMAIL -A $LOGFILE
+		else
+			echo $msg
+		fi
+		# Remove repo
+		rm -rf ${BUILD_DIR}/${NAME}
+	fi
+	rm -f $LOCKFILE
+	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
+	find /tmp/${NAME}/* -type d -atime +1 | rm -rf
+fi
