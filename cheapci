@@ -75,7 +75,7 @@ fi
 
 if [[ $VERBOSE -gt 0 ]]
 then
-	set +x
+	set -x
 fi
 
 BUILD_DIR="/tmp/${NAME}/${NAME}_builddir"
@@ -124,7 +124,7 @@ else
 		fi
 		if [[ $MAIL != "" ]] && [[ $MAILCMD != "" ]]
 		then
-			echo $msg | $MAILCMD -s "$msg" $EMAIL -A $LOGFILE
+			echo $msg | $MAILCMD -s "$msg" -A $LOGFILE -t $EMAIL
 		else
 			echo $msg
 		fi
