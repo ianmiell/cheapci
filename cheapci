@@ -2,6 +2,8 @@
 
 # Simple CI
 
+set -o pipefail
+
 function show_help() {
 	cat > /dev/stdout << END
 $0 [-m <email>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h] -r <repo> -l <local_checkout>
@@ -113,7 +115,7 @@ else
 		git clone $REPO $NAME
 		popd
 		pushd ${BUILD_DIR}/${NAME}/${TESTDIR}
-		$TESTCOMMAND >> ${LOGFILE} 2>&1
+		$TESTCOMMAND | tee -a ${LOGFILE} 2>&1
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
