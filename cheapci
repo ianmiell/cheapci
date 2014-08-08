@@ -124,7 +124,7 @@ else
 		else
 			msg="HAPPY $NAME"
 		fi
-		if [[ $MAIL != "" ]] && [[ $MAILCMD != "" ]]
+		if [[ $EMAIL != "" ]] && [[ $MAILCMD != "" ]]
 		then
 			echo $msg | $MAILCMD -s "$msg" -A $LOGFILE -t $EMAIL
 		else
