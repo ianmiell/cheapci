@@ -26,9 +26,9 @@ VERBOSE=0
 REPO=""
 EMAIL=""
 NAME="ci"
-TESTDIR="."
-TESTCOMMAND="./test.sh"
-MAILCMD="mail"
+TEST_DIR="."
+TEST_COMMAND="./test.sh"
+MAIL_CMD="mail"
 
 while getopts "h?vfm:n:d:r:l:c:a:" opt
 do
@@ -53,16 +53,16 @@ do
 		NAME=$OPTARG
 		;;
 	d)
-		TESTDIR=$OPTARG
+		TEST_DIR=$OPTARG
 		;;
 	l)
 		LOCAL_CHECKOUT=$OPTARG
 		;;
 	c)
-		TESTCOMMAND=$OPTARG
+		TEST_COMMAND=$OPTARG
 		;;
 	a)
-		MAILCMD=$OPTARG
+		MAIL_CMD=$OPTARG
 		;;
 	esac
 done
@@ -83,42 +83,55 @@ then
 	set -x
 fi
 
-BUILD_DIR="/tmp/${NAME}/${NAME}_builddir"
+BUILD_DIR_BASE="/tmp/${NAME}"
+BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
 mkdir -p $BUILD_DIR
-LOGFILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
-BUILDLOGFILE="${BUILD_DIR}/${NAME}_build.log.txt"
-touch $BUILDLOGFILE
+LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
+BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
+LOCK_FILE="${BUILD_DIR}/${NAME}ci.lck"
 
-echo $(date) 2>&1 | tee -a $BUILDLOGFILE
+function cleanup() {
+	rm -rf ${BUILD_DIR}/${NAME}
+	rm -f ${LOCK_FILE}
+	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
+	find ${BUILD_DIR_BASE}/* -type d -atime +1 | rm -rf
+	echo cleanup	
+	exit 1
+}
+
+trap cleanup INT
+
+touch $BUILD_LOG_FILE
+
+echo $(date) 2>&1 | tee -a $BUILD_LOG_FILE
 
 # Lockfile
-LOCKFILE="${BUILD_DIR}/${NAME}ci.lck"
-if [[ -a $LOCKFILE ]]
+if [[ -a $LOCK_FILE ]]
 then
-	echo "Already running" | tee -a $BUILDLOGFILE
+	echo "Already running" | tee -a $BUILD_LOG_FILE
 	exit 
 else
-	touch $LOCKFILE
+	touch $LOCK_FILE
 	# Fetch changes
 	pushd $LOCAL_CHECKOUT
-	git fetch origin master 2>&1 | tee -a $BUILDLOGFILE
+	git fetch origin master 2>&1 | tee -a $BUILD_LOG_FILE
 	# See if there are any incoming changes
 	updates=$(git log HEAD..origin/master --oneline | wc -l)
-	echo "Updates: $updates" | tee -a $BUILDLOGFILE
+	echo "Updates: $updates" | tee -a $BUILD_LOG_FILE
 	if [[ $updates -gt 0 ]] || [[ $FORCE -gt 0 ]]
 	then
-		touch $LOGFILE
+		touch $LOG_FILE
 		pushd $LOCAL_CHECKOUT
-		echo "Pulling" | tee -a $LOGFILE
-		git pull origin master 2>&1 | tee -a $LOGFILE
+		echo "Pulling" | tee -a $LOG_FILE
+		git pull origin master 2>&1 | tee -a $LOG_FILE
 		popd
 		# This won't exist in a bit so no point pushd'ing
 		pushd $BUILD_DIR
 		# Clone to NAME
 		git clone $REPO $NAME
 		popd
-		pushd ${BUILD_DIR}/${NAME}/${TESTDIR}
-		$TESTCOMMAND | tee -a ${LOGFILE} 2>&1
+		pushd ${BUILD_DIR}/${NAME}/${TEST_DIR}
+		$TEST_COMMAND | tee -a ${LOG_FILE} 2>&1
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
@@ -127,16 +140,12 @@ else
 		else
 			msg="HAPPY $NAME"
 		fi
-		if [[ $EMAIL != "" ]] && [[ $MAILCMD != "" ]]
+		if [[ $EMAIL != "" ]] && [[ $MAIL_CMD != "" ]]
 		then
-			echo $msg | $MAILCMD -s "$msg" -A $LOGFILE -t $EMAIL
+			echo $msg | $MAIL_CMD -s "$msg" -A $LOG_FILE -t $EMAIL
 		else
 			echo $msg
 		fi
-		# Remove repo
-		rm -rf ${BUILD_DIR}/${NAME}
 	fi
-	rm -f $LOCKFILE
-	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
-	find /tmp/${NAME}/* -type d -atime +1 | rm -rf
+	cleanup
 fi
