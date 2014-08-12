@@ -101,8 +101,6 @@ function cleanup() {
 
 trap cleanup TERM INT QUIT
 
-touch $BUILD_LOG_FILE
-
 echo $(date) 2>&1 | tee -a $BUILD_LOG_FILE
 
 # Lockfile
