@@ -30,7 +30,7 @@ TESTDIR="."
 TESTCOMMAND="./test.sh"
 MAILCMD="mail"
 
-while getopts "h?vfm:n:d:r:l:c:" opt
+while getopts "h?vfm:n:d:r:l:c:a:" opt
 do
 	case "$opt" in
 	h|\?)
@@ -60,6 +60,9 @@ do
 		;;
 	c)
 		TESTCOMMAND=$OPTARG
+		;;
+	a)
+		MAILCMD=$OPTARG
 		;;
 	esac
 done
