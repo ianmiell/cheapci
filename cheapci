@@ -99,7 +99,7 @@ function cleanup() {
 	exit 1
 }
 
-trap cleanup INT
+trap cleanup TERM INT QUIT
 
 touch $BUILD_LOG_FILE
 
