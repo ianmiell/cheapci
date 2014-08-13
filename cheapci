@@ -6,11 +6,12 @@ set -o pipefail
 
 function show_help() {
 	cat > /dev/stdout << END
-$0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h] -r <repo> -l <local_checkout>
+$0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h] -r <repo> -l <local_checkout>
 
 -q - script to run just before actually performing test (default /bin/true)
 -w - script to run just after actually performing test (default /bin/true)
 -m - email to send using "mail" command (default logs to stdout)
+-a - mail command to use (default=mail)
 -n - name for ci (unique, must be a valid directory name), eg myproj (default=ci)
 -d - directory within repository to navigate to (default=.)
 -c - test command to run from -d directory (default=./test.sh)
