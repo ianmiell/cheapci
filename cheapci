@@ -74,6 +74,9 @@ do
 	w)
 		POST_SCRIPT=$OPTARG
 		;;
+	a)
+		MAILCMD=$OPTARG
+		;;
 	esac
 done
 
