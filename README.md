@@ -47,11 +47,25 @@ ian.miell@gmail.com if there are any issues"
 
   Crontab line:
 
-  * * * * * cd /path/to/cheapci && ./cheapci \
+* * * * * cd /path/to/cheapci && ./cheapci \
             -r https://github.com/ianmiell/shutit.git \
             -l /space/git/shutit \
             -d test \
             -c ./test.sh \
             -m ian.miell@gmail.com
+
+- "Test cheapci with cheapci"
+
+  ./cheapci \
+     -q "ls -l" \
+     -w "ls -l" \
+     -m ian.miell@gmail.com \
+     -n cheapci \
+     -d . \
+     -c /bin/true \
+     -v \
+     -r https://github.com/ianmiell/cheapci \
+     -l /space/git/cheapci \
+     -f
 
 ```

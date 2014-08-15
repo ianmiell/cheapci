@@ -142,7 +142,6 @@ function cleanup() {
 	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
 	find "${BUILD_DIR_BASE}"/* -type d -atime +1 | rm -rf
 	echo "cleanup done"
-	exit 1
 }
 
 trap cleanup TERM INT QUIT
