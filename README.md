@@ -35,7 +35,7 @@ EXAMPLES
 indicates there's been an update. Then navigate to test, run ./test.sh and mail 
 ian.miell@gmail.com if there are any issues"
 
-  ./cheapci \
+./cheapci \
       -r https://github.com/ianmiell/shutit.git \
       -l /space/git/shutit \
       -d test \
@@ -47,16 +47,11 @@ ian.miell@gmail.com if there are any issues"
 
   Crontab line:
 
-* * * * * cd /path/to/cheapci && ./cheapci \
-            -r https://github.com/ianmiell/shutit.git \
-            -l /space/git/shutit \
-            -d test \
-            -c ./test.sh \
-            -m ian.miell@gmail.com
+* * * * * cd /path/to/cheapci && ./cheapci -r https://github.com/ianmiell/shutit.git -l /space/git/shutit -d test -c ./test.sh -m ian.miell@gmail.com
 
 - "Test cheapci with cheapci"
 
-  ./cheapci \
+./cheapci \
      -q "ls -l" \
      -w "ls -l" \
      -m ian.miell@gmail.com \
