@@ -13,7 +13,7 @@ $0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>]
 
 -q - script to run just before actually performing test (default /bin/true)
 -w - script to run just after actually performing test (default /bin/true)
--m - email to send using "mail" command (default logs to stdout)
+-m - email address to send to using "mail" command (default logs to stdout)
 -a - mail command to use (default=mail)
 -n - name for ci (unique, must be a valid directory name), eg myproj (default=ci)
 -d - directory within repository to navigate to (default=.)
