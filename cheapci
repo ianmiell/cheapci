@@ -188,14 +188,14 @@ else
 		# Clone to NAME
 		git clone $REPO $NAME
 		popd
-		eval $PRE_SCRIPT | tee -a ${LOG_FILE} 2>&1
+		eval $PRE_SCRIPT 2>&1 | tee -a ${LOG_FILE}
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
 			msg="ANGRY $NAME on $(hostname)"
 		fi
 		pushd ${BUILD_DIR}/${NAME}/${TEST_DIR}
-		$TEST_COMMAND | tee -a ${LOG_FILE} 2>&1
+		$TEST_COMMAND 2>&1 | tee -a ${LOG_FILE}
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
@@ -204,7 +204,7 @@ else
 		else
 			msg="HAPPY $NAME on $(hostname)"
 		fi
-		eval $POST_SCRIPT | tee -a ${LOG_FILE} 2>&1
+		eval $POST_SCRIPT 2>&1 | tee -a ${LOG_FILE}
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
