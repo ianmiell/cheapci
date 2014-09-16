@@ -13,7 +13,7 @@ $0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>]
 
 -q - script to run just before actually performing test (default /bin/true)
 -w - script to run just after actually performing test (default /bin/true)
--m - email to send using "mail" command (default logs to stdout)
+-m - email address to send to using "mail" command (default logs to stdout)
 -a - mail command to use (default=mail)
 -n - name for ci (unique, must be a valid directory name), eg myproj (default=ci)
 -d - directory within repository to navigate to (default=.)
@@ -131,18 +131,17 @@ fi
 
 BUILD_DIR_BASE="/tmp/${NAME}"
 BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
-mkdir -p $BUILD_DIR
+mkdir -p "$BUILD_DIR"
 LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
 BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
 LOCK_FILE="${BUILD_DIR}/${NAME}ci.lck"
 
 function cleanup() {
-	rm -rf ${BUILD_DIR}/${NAME}
-	rm -f ${LOCK_FILE}
+	rm -rf "${BUILD_DIR}"/"${NAME}"
+	rm -f "${LOCK_FILE}"
 	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
-	find ${BUILD_DIR_BASE}/* -type d -atime +1 | rm -rf
-	echo cleanup done
-	exit 1
+	find "${BUILD_DIR_BASE}"/* -type d -atime +1 | rm -rf
+	echo "cleanup done"
 }
 
 trap cleanup TERM INT QUIT
@@ -151,51 +150,52 @@ function send_mail() {
 	msg=$1
 	if [[ $LOG_FILE != '' ]] && [[ $MAIL_CMD_ATTACH_FLAG != '' ]]
 	then
-		log_file_arg="$MAIL_CMD_ATTACH_FLAG $LOG_FILE"
+		log_file_arg=($MAIL_CMD_ATTACH_FLAG $LOG_FILE)
 	fi
 	if [[ $EMAIL != "" ]] && [[ $MAIL_CMD != "" ]]
 	then
-		echo $msg | $MAIL_CMD $MAIL_CMD_SUBJECT_FLAG "$msg" $log_file_arg $MAIL_CMD_RECIPIENTS_FLAG $EMAIL
+		echo "$msg" | $MAIL_CMD "$MAIL_CMD_SUBJECT_FLAG" "$msg" "${log_file_arg[@]}" "$MAIL_CMD_RECIPIENTS_FLAG" "$EMAIL"
 	else
-		echo $msg
+		echo "$msg"
 	fi
 }
 
-echo $(date) 2>&1 | tee -a $BUILD_LOG_FILE
+date 2>&1 | tee -a "$BUILD_LOG_FILE"
 
 # Lockfile
 if [[ -a $LOCK_FILE ]]
 then
-	echo "Already running" | tee -a $BUILD_LOG_FILE
+	echo "Already running" | tee -a "$BUILD_LOG_FILE"
 	exit 
 else
-	touch $LOCK_FILE
+	touch "$LOCK_FILE"
 	# Fetch changes
-	pushd $LOCAL_CHECKOUT
-	git fetch origin master 2>&1 | tee -a $BUILD_LOG_FILE
+	pushd "$LOCAL_CHECKOUT"
+	git fetch origin master 2>&1 | tee -a "$BUILD_LOG_FILE"
 	# See if there are any incoming changes
 	updates=$(git log HEAD..origin/master --oneline | wc -l)
-	echo "Updates: $updates" | tee -a $BUILD_LOG_FILE
+	echo "Updates: $updates" | tee -a "$BUILD_LOG_FILE"
 	if [[ $updates -gt 0 ]] || [[ $FORCE -gt 0 ]]
 	then
-		touch $LOG_FILE
-		pushd $LOCAL_CHECKOUT
-		echo "Pulling" | tee -a $LOG_FILE
-		git pull origin master 2>&1 | tee -a $LOG_FILE
+		touch "$LOG_FILE"
+		pushd "$LOCAL_CHECKOUT"
+		echo "Pulling" | tee -a "$LOG_FILE"
+		git pull origin master 2>&1 | tee -a "$LOG_FILE"
 		popd
 		# This won't exist in a bit so no point pushd'ing
-		pushd $BUILD_DIR
+		pushd "$BUILD_DIR"
 		# Clone to NAME
-		git clone $REPO $NAME
+		git clone "$REPO" "$NAME"
 		popd
-		eval $PRE_SCRIPT 2>&1 | tee -a ${LOG_FILE}
+		$PRE_SCRIPT 2>&1 | tee -a ${LOG_FILE}
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
 			msg="ANGRY $NAME on $(hostname)"
 		fi
-		pushd ${BUILD_DIR}/${NAME}/${TEST_DIR}
 		$TEST_COMMAND 2>&1 | tee -a ${LOG_FILE}
+		pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
+		$TEST_COMMAND 2>&1 | tee -a "${LOG_FILE}" 2>&1
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
@@ -204,7 +204,7 @@ else
 		else
 			msg="HAPPY $NAME on $(hostname)"
 		fi
-		eval $POST_SCRIPT 2>&1 | tee -a ${LOG_FILE}
+		$POST_SCRIPT 2>&1 | tee -a ${LOG_FILE}
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then

@@ -1,7 +1,8 @@
 cheapci
 =======
 
-Simple CI framework in bash. Checks whether there have been any updates, runs tests and mails you on completion.
+Simple CI framework in bash. Checks whether there have been any updates, runs tests 
+and mails you on completion.
 
 Usage:
 
@@ -30,16 +31,36 @@ $ ./cheapci
 
 EXAMPLES
 
-- "Clone -r https://github.com/ianmiell/shutit.git if a git pull on /space/git/shutit indicates there's been an update.
-  Then navigate to test, run ./test.sh and mail ian.miell@gmail.com if there are any issues"
+- "Clone -r https://github.com/ianmiell/shutit.git if a git pull on /space/git/shutit 
+indicates there's been an update. Then navigate to test, run ./test.sh and mail 
+ian.miell@gmail.com if there are any issues"
 
-  ./cheapci -r https://github.com/ianmiell/shutit.git -l /space/git/shutit -d test -c ./test.sh -m ian.miell@gmail.com
+./cheapci \
+      -r https://github.com/ianmiell/shutit.git \
+      -l /space/git/shutit \
+      -d test \
+      -c ./test.sh \
+      -m ian.miell@gmail.com
 
 
-- "Run this continuously in a crontab."
+- "Run the above continuously in a crontab."
 
   Crontab line:
 
-  * * * * * cd /path/to/cheapci && ./cheapci -r https://github.com/ianmiell/shutit.git -l /space/git/shutit -d test -c ./test.sh -m ian.miell@gmail.com
+* * * * * cd /path/to/cheapci && ./cheapci -r https://github.com/ianmiell/shutit.git -l /space/git/shutit -d test -c ./test.sh -m ian.miell@gmail.com
+
+- "Test cheapci with cheapci"
+
+./cheapci \
+     -q "ls -l" \
+     -w "ls -l" \
+     -m ian.miell@gmail.com \
+     -n cheapci \
+     -d . \
+     -c /bin/true \
+     -v \
+     -r https://github.com/ianmiell/cheapci \
+     -l /space/git/cheapci \
+     -f
 
 ```
