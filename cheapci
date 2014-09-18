@@ -4,6 +4,22 @@
 
 set -o pipefail
 
+# Defaults
+FORCE=0
+VERBOSE=0
+REPO=""
+EMAIL=""
+NAME="ci"
+TEST_DIR="."
+TEST_COMMAND="./test.sh"
+MAIL_CMD="mail"
+MAIL_CMD_ATTACH_FLAG="-A"
+MAIL_CMD_RECIPIENTS_FLAG="-t"
+MAIL_CMD_SUBJECT_FLAG="-s"
+PRE_SCRIPT="/bin/true"
+POST_SCRIPT="/bin/true"
+TIMEOUT_S=86400
+
 function show_help() {
 	cat > /dev/stdout << END
 $0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>]
@@ -11,21 +27,26 @@ $0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>]
    [-e <recipients flag>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h]
    -r <repo> -l <local_checkout>
 
--q - script to run just before actually performing test (default /bin/true)
--w - script to run just after actually performing test (default /bin/true)
--m - email address to send to using "mail" command (default logs to stdout)
--a - mail command to use (default=mail)
--n - name for ci (unique, must be a valid directory name), eg myproj (default=ci)
--d - directory within repository to navigate to (default=.)
--c - test command to run from -d directory (default=./test.sh)
--t - attach argument flag for mail command (default=-A, empty string means no-attach)
--s - subject flag for mail command (default=-s)
--e - recipients flag (default=-t, empty string means no flag needed)
--f - force a run even if repo has no updates (default off)
--v - verbose logging (default off)
--h - show help
+REQUIRED ARGS:
 -r - git repository, eg https://github.com/myname/myproj (required)
 -l - local checkout of code (that gets updated to determine whether a run is needed) (required)
+
+OPTIONAL ARGS:
+-q - script to run just before actually performing test (default ${PRE_SCRIPT})
+-w - script to run just after actually performing test (default ${POST_SCRIPT})
+-m - email address to send to using "mail" command (default logs to stdout)
+-a - mail command to use (default=${MAIL_CMD})
+-n - name for ci (unique, must be a valid directory name), eg myproj (default=${NAME})
+-d - directory within repository to navigate to (default=${TEST_DIR})
+-c - test command to run from -d directory (default=${TEST_COMMAND})
+-t - attach argument flag for mail command (default=${MAIL_CMD_ATTACH_FLAG}, empty string means no-attach)
+-s - subject flag for mail command (default=${MAIL_CMD_RECIPIENTS_FLAG})
+-e - recipients flag (default=${MAIL_CMD_RECIPIENTS_FLAG}, empty string means no flag needed)
+-f - force a run even if repo has no updates (default off)
+-v - verbose logging (default off)
+-i - timeout in seconds (default 86400, ie one day, does KILL one hour after that)
+-h - show help
+
 
 EXAMPLES
 
@@ -43,20 +64,6 @@ EXAMPLES
 END
 }
 
-# Defaults
-FORCE=0
-VERBOSE=0
-REPO=""
-EMAIL=""
-NAME="ci"
-TEST_DIR="."
-TEST_COMMAND="./test.sh"
-MAIL_CMD="mail"
-MAIL_CMD_ATTACH_FLAG="-A"
-MAIL_CMD_RECIPIENTS_FLAG="-t"
-MAIL_CMD_SUBJECT_FLAG="-s"
-PRE_SCRIPT="/bin/true"
-POST_SCRIPT="/bin/true"
 
 while getopts "h?vfm:n:d:r:l:c:a:q:w:t:e:s:" opt
 do
@@ -109,6 +116,9 @@ do
 		;;
 	s)
 		MAIL_CMD_SUBJECT_FLAG=$OPTARG
+		;;
+	i)
+		TIMEOUT_S=$OPTARG
 		;;
 	esac
 done
@@ -193,14 +203,17 @@ else
 		then
 			msg="ANGRY $NAME on $(hostname)"
 		fi
-		$TEST_COMMAND 2>&1 | tee -a ${LOG_FILE}
 		pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
-		$TEST_COMMAND 2>&1 | tee -a "${LOG_FILE}" 2>&1
+		timeout $TIMEOUT_S $TEST_COMMAND 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
-			msg="ANGRY $NAME on $(hostname)"
+			if [[ $EXIT_CODE -eq 124 ]]
+				msg="ANGRY (TIMEOUT) $NAME on $(hostname)"
+			else
+				msg="ANGRY $NAME on $(hostname)"
+			fi
 		else
 			msg="HAPPY $NAME on $(hostname)"
 		fi
