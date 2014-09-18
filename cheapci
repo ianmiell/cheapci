@@ -20,12 +20,14 @@ PRE_SCRIPT="/bin/true"
 POST_SCRIPT="/bin/true"
 TIMEOUT_S=86400
 
+PAGER=${PAGER:more}
+
 function show_help() {
 	cat > /dev/stdout << END
-$0 [-q <pre-script>] [-w <post-script>] [-m <email>] [-a <mail command>]
-   [-t <mail command attach flag>] [-s <mail command subject flag]
-   [-e <recipients flag>] [-n name] [-d <dir>] [-c <command>] [-f] [-v] [-h]
-   -r <repo> -l <local_checkout>
+$0 -r <repo> -l <local_checkout> [-q <pre-script>] [-w <post-script>]
+   [-m <email>] [-a <mail command>] [-t <mail command attach flag>]
+   [-s <mail command subject flag] [-e <recipients flag>] [-n name] [-d <dir>] 
+   [-c <command>] [-f] [-v] [-h]
 
 REQUIRED ARGS:
 -r - git repository, eg https://github.com/myname/myproj (required)
@@ -46,7 +48,6 @@ OPTIONAL ARGS:
 -v - verbose logging (default off)
 -i - timeout in seconds (default 86400, ie one day, does KILL one hour after that)
 -h - show help
-
 
 EXAMPLES
 
@@ -210,6 +211,7 @@ else
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
 			if [[ $EXIT_CODE -eq 124 ]]
+			then
 				msg="ANGRY (TIMEOUT) $NAME on $(hostname)"
 			else
 				msg="ANGRY $NAME on $(hostname)"
