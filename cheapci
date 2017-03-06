@@ -148,7 +148,7 @@ BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
 LOCK_FILE="${BUILD_DIR}/${NAME}ci.lck"
 
 function cleanup() {
-	rm -rf "${BUILD_DIR}"/"${NAME}"
+	rm -rf "${BUILD_DIR:?}"/"${NAME}"
 	rm -f "${LOCK_FILE}"
 	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
 	find "${BUILD_DIR_BASE}"/* -type d -atime +1 | rm -rf
@@ -198,14 +198,14 @@ else
 		# Clone to NAME
 		git clone "$REPO" "$NAME"
 		popd
-		$PRE_SCRIPT 2>&1 | tee -a ${LOG_FILE}
+		$PRE_SCRIPT 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
 			msg="ANGRY $NAME on $(hostname)"
 		fi
 		pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
-		timeout $TIMEOUT_S $TEST_COMMAND 2>&1 | tee -a "${LOG_FILE}"
+		timeout "$TIMEOUT_S" "$TEST_COMMAND" 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
 		popd
 	        if [[ $EXIT_CODE -ne 0 ]]
@@ -219,7 +219,7 @@ else
 		else
 			msg="HAPPY $NAME on $(hostname)"
 		fi
-		$POST_SCRIPT 2>&1 | tee -a ${LOG_FILE}
+		$POST_SCRIPT 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
 	        if [[ $EXIT_CODE -ne 0 ]]
 		then
