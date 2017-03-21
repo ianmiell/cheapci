@@ -3,6 +3,7 @@
 # Simple CI
 
 set -o pipefail
+set -o nounset
 
 # Defaults
 FORCE=0
@@ -73,54 +74,22 @@ do
 		show_help
 		exit 0
 		;;
-	v)
-		VERBOSE=1
-		;;
-	f)
-		FORCE=1
-		;;
-	r)
-		REPO=$OPTARG
-		;;
-	m)
-		EMAIL=$OPTARG
-		;;
-	n)
-		NAME=$OPTARG
-		;;
-	d)
-		TEST_DIR=$OPTARG
-		;;
-	l)
-		LOCAL_CHECKOUT=$OPTARG
-		;;
-	c)
-		TEST_COMMAND=$OPTARG
-		;;
-	a)
-		MAIL_CMD=$OPTARG
-		;;
-	q)
-		PRE_SCRIPT=$OPTARG
-		;;
-	w)
-		POST_SCRIPT=$OPTARG
-		;;
-	a)
-		MAIL_CMD=$OPTARG
-		;;
-	t)
-		MAIL_CMD_ATTACH_FLAG=$OPTARG
-		;;
-	e)
-		MAIL_CMD_RECIPIENTS_FLAG=$OPTARG
-		;;
-	s)
-		MAIL_CMD_SUBJECT_FLAG=$OPTARG
-		;;
-	i)
-		TIMEOUT_S=$OPTARG
-		;;
+	v) VERBOSE=1 ;;
+	f) FORCE=1 ;;
+	r) REPO=$OPTARG ;;
+	m) EMAIL=$OPTARG ;;
+	n) NAME=$OPTARG ;;
+	d) TEST_DIR=$OPTARG ;;
+	l) LOCAL_CHECKOUT=$OPTARG ;;
+	c) TEST_COMMAND=$OPTARG ;;
+	a) MAIL_CMD=$OPTARG ;;
+	q) PRE_SCRIPT=$OPTARG ;;
+	w) POST_SCRIPT=$OPTARG ;;
+	a) MAIL_CMD=$OPTARG ;;
+	t) MAIL_CMD_ATTACH_FLAG=$OPTARG ;;
+	e) MAIL_CMD_RECIPIENTS_FLAG=$OPTARG ;;
+	s) MAIL_CMD_SUBJECT_FLAG=$OPTARG ;;
+	i) TIMEOUT_S=$OPTARG ;;
 	esac
 done
 
