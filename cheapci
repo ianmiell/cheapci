@@ -69,33 +69,33 @@ END
 
 while getopts "h?vfm:n:d:r:l:c:a:q:w:t:e:s:" opt
 do
-	case "$opt" in
+	case "${opt}" in
 	h|\?)
 		show_help
 		exit 0
 		;;
 	v) VERBOSE=1 ;;
 	f) FORCE=1 ;;
-	r) REPO=$OPTARG ;;
-	m) EMAIL=$OPTARG ;;
-	n) NAME=$OPTARG ;;
-	d) TEST_DIR=$OPTARG ;;
-	l) LOCAL_CHECKOUT=$OPTARG ;;
-	c) TEST_COMMAND=$OPTARG ;;
-	a) MAIL_CMD=$OPTARG ;;
-	q) PRE_SCRIPT=$OPTARG ;;
-	w) POST_SCRIPT=$OPTARG ;;
-	a) MAIL_CMD=$OPTARG ;;
-	t) MAIL_CMD_ATTACH_FLAG=$OPTARG ;;
-	e) MAIL_CMD_RECIPIENTS_FLAG=$OPTARG ;;
-	s) MAIL_CMD_SUBJECT_FLAG=$OPTARG ;;
-	i) TIMEOUT_S=$OPTARG ;;
+	r) REPO=${OPTARG} ;;
+	m) EMAIL=${OPTARG} ;;
+	n) NAME=${OPTARG} ;;
+	d) TEST_DIR=${OPTARG} ;;
+	l) LOCAL_CHECKOUT=${OPTARG} ;;
+	c) TEST_COMMAND=${OPTARG} ;;
+	a) MAIL_CMD=${OPTARG} ;;
+	q) PRE_SCRIPT=${OPTARG} ;;
+	w) POST_SCRIPT=${OPTARG} ;;
+	a) MAIL_CMD=${OPTARG} ;;
+	t) MAIL_CMD_ATTACH_FLAG=${OPTARG} ;;
+	e) MAIL_CMD_RECIPIENTS_FLAG=${OPTARG} ;;
+	s) MAIL_CMD_SUBJECT_FLAG=${OPTARG} ;;
+	i) TIMEOUT_S=${OPTARG} ;;
 	esac
 done
 
-shift $((OPTIND-1))
+shift "$((OPTIND-1))"
 
-if [[ $REPO = "" ]]
+if [[ ${REPO} = "" ]]
 then
 	show_help
 	exit 1
@@ -104,14 +104,14 @@ fi
 
 # To force a run even if no updates.
 
-if [[ $VERBOSE -gt 0 ]]
+if [[ ${VERBOSE} -gt 0 ]]
 then
 	set -x
 fi
 
 BUILD_DIR_BASE="/tmp/${NAME}"
 BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
-mkdir -p "$BUILD_DIR"
+mkdir -p "${BUILD_DIR}"
 LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
 BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
 LOCK_FILE="${BUILD_DIR}/${NAME}ci.lck"
@@ -128,73 +128,73 @@ trap cleanup TERM INT QUIT
 
 function send_mail() {
 	msg=$1
-	if [[ $LOG_FILE != '' ]] && [[ $MAIL_CMD_ATTACH_FLAG != '' ]]
+	if [[ ${LOG_FILE} != '' ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != '' ]]
 	then
-		log_file_arg=($MAIL_CMD_ATTACH_FLAG $LOG_FILE)
+		log_file_arg=(${MAIL_CMD_ATTACH_FLAG} ${LOG_FILE})
 	fi
-	if [[ $EMAIL != "" ]] && [[ $MAIL_CMD != "" ]]
+	if [[ ${EMAIL} != "" ]] && [[ ${MAIL_CMD} != "" ]]
 	then
-		echo "$msg" | $MAIL_CMD "$MAIL_CMD_SUBJECT_FLAG" "$msg" "${log_file_arg[@]}" "$MAIL_CMD_RECIPIENTS_FLAG" "$EMAIL"
+		echo "${msg}" | ${MAIL_CMD} "${MAIL_CMD_SUBJECT_FLAG}" "${msg}" "${log_file_arg[@]}" "${MAIL_CMD_RECIPIENTS_FLAG}" "${EMAIL}"
 	else
-		echo "$msg"
+		echo "${msg}"
 	fi
 }
 
-date 2>&1 | tee -a "$BUILD_LOG_FILE"
+date 2>&1 | tee -a "${BUILD_LOG_FILE}"
 
 # Lockfile
-if [[ -a $LOCK_FILE ]]
+if [[ -a ${LOCK_FILE} ]]
 then
-	echo "Already running" | tee -a "$BUILD_LOG_FILE"
+	echo "Already running" | tee -a "${BUILD_LOG_FILE}"
 	exit 
 else
-	touch "$LOCK_FILE"
+	touch "${LOCK_FILE}"
 	# Fetch changes
-	pushd "$LOCAL_CHECKOUT"
-	git fetch origin master 2>&1 | tee -a "$BUILD_LOG_FILE"
+	pushd "${LOCAL_CHECKOUT}"
+	git fetch origin master 2>&1 | tee -a "${BUILD_LOG_FILE}"
 	# See if there are any incoming changes
 	updates=$(git log HEAD..origin/master --oneline | wc -l)
-	echo "Updates: $updates" | tee -a "$BUILD_LOG_FILE"
-	if [[ $updates -gt 0 ]] || [[ $FORCE -gt 0 ]]
+	echo "Updates: ${updates}" | tee -a "${BUILD_LOG_FILE}"
+	if [[ ${updates} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
 	then
-		touch "$LOG_FILE"
-		pushd "$LOCAL_CHECKOUT"
-		echo "Pulling" | tee -a "$LOG_FILE"
-		git pull origin master 2>&1 | tee -a "$LOG_FILE"
+		touch "${LOG_FILE}"
+		pushd "${LOCAL_CHECKOUT}"
+		echo "Pulling" | tee -a "${LOG_FILE}"
+		git pull origin master 2>&1 | tee -a "${LOG_FILE}"
 		popd
 		# This won't exist in a bit so no point pushd'ing
-		pushd "$BUILD_DIR"
+		pushd "${BUILD_DIR}"
 		# Clone to NAME
-		git clone "$REPO" "$NAME"
+		git clone "${REPO}" "${NAME}"
 		popd
-		$PRE_SCRIPT 2>&1 | tee -a "${LOG_FILE}"
-		EXIT_CODE=$?
-	        if [[ $EXIT_CODE -ne 0 ]]
+		${PRE_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
+		EXIT_CODE="${?}"
+	        if [[ ${EXIT_CODE} -ne 0 ]]
 		then
-			msg="ANGRY $NAME on $(hostname)"
+			msg="ANGRY ${NAME} on $(hostname)"
 		fi
 		pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
-		timeout "$TIMEOUT_S" "$TEST_COMMAND" 2>&1 | tee -a "${LOG_FILE}"
+		timeout "${TIMEOUT_S}" "${TEST_COMMAND}" 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
 		popd
-	        if [[ $EXIT_CODE -ne 0 ]]
+	        if [[ ${EXIT_CODE} -ne 0 ]]
 		then
-			if [[ $EXIT_CODE -eq 124 ]]
+			if [[ ${EXIT_CODE} -eq 124 ]]
 			then
-				msg="ANGRY (TIMEOUT) $NAME on $(hostname)"
+				msg="ANGRY (TIMEOUT) ${NAME} on $(hostname)"
 			else
-				msg="ANGRY $NAME on $(hostname)"
+				msg="ANGRY ${NAME} on $(hostname)"
 			fi
 		else
-			msg="HAPPY $NAME on $(hostname)"
+			msg="HAPPY ${NAME} on $(hostname)"
 		fi
-		$POST_SCRIPT 2>&1 | tee -a "${LOG_FILE}"
+		${POST_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
 		EXIT_CODE=$?
-	        if [[ $EXIT_CODE -ne 0 ]]
+	        if [[ ${EXIT_CODE} -ne 0 ]]
 		then
-			msg="ANGRY $NAME on $(hostname)"
+			msg="ANGRY ${NAME} on $(hostname)"
 		fi
-		send_mail "$msg"
+		send_mail "${msg}"
 	fi
 	cleanup
 fi
