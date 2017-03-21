@@ -25,7 +25,7 @@ PAGER=${PAGER:more}
 
 function show_help() {
 	cat > /dev/stdout << END
-$0 -r <repo> -l <local_checkout> [-q <pre-script>] [-w <post-script>]
+${0} -r <repo> -l <local_checkout> [-q <pre-script>] [-w <post-script>]
    [-m <email>] [-a <mail command>] [-t <mail command attach flag>]
    [-s <mail command subject flag] [-e <recipients flag>] [-n name] [-d <dir>] 
    [-c <command>] [-f] [-v] [-h]
@@ -114,10 +114,10 @@ BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
 mkdir -p "${BUILD_DIR}"
 LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
 BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
-LOCK_FILE="${BUILD_DIR}/${NAME}ci.lck"
+LOCK_FILE="${BUILD_DIR}/${NAME}_ci.lck"
 
 function cleanup() {
-	rm -rf "${BUILD_DIR:?}"/"${NAME}"
+	rm -rf "${BUILD_DIR}"
 	rm -f "${LOCK_FILE}"
 	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
 	find "${BUILD_DIR_BASE}"/* -type d -atime +1 | rm -rf
@@ -127,8 +127,8 @@ function cleanup() {
 trap cleanup TERM INT QUIT
 
 function send_mail() {
-	msg=$1
-	if [[ ${LOG_FILE} != '' ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != '' ]]
+	msg=${1}
+	if [[ ${LOG_FILE} != "" ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != "" ]]
 	then
 		log_file_arg=(${MAIL_CMD_ATTACH_FLAG} ${LOG_FILE})
 	fi
