@@ -21,7 +21,7 @@ PRE_SCRIPT="/bin/true"
 POST_SCRIPT="/bin/true"
 TIMEOUT_S=86400
 
-PAGER=${PAGER:more}
+PAGER=${PAGER:-more}
 
 function show_help() {
 	cat > /dev/stdout << END
