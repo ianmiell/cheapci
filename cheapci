@@ -82,7 +82,6 @@ do
 	d) TEST_DIR=${OPTARG} ;;
 	l) LOCAL_CHECKOUT=${OPTARG} ;;
 	c) TEST_COMMAND=${OPTARG} ;;
-	a) MAIL_CMD=${OPTARG} ;;
 	q) PRE_SCRIPT=${OPTARG} ;;
 	w) POST_SCRIPT=${OPTARG} ;;
 	a) MAIL_CMD=${OPTARG} ;;
