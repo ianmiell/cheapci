@@ -123,8 +123,6 @@ function cleanup() {
 	echo "cleanup done"
 }
 
-trap cleanup TERM INT QUIT
-
 function send_mail() {
 	msg=${1}
 	if [[ ${LOG_FILE} != "" ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != "" ]]
@@ -147,6 +145,8 @@ then
 	echo "Already running" | tee -a "${BUILD_LOG_FILE}"
 	exit 
 fi
+
+trap cleanup TERM INT QUIT EXIT
 
 touch "${LOCK_FILE}"
 # Fetch changes
@@ -196,4 +196,3 @@ then
 	fi
 	send_mail "${msg}"
 fi
-cleanup
