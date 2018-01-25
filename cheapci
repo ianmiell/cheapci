@@ -119,11 +119,9 @@ function cleanup() {
 	rm -rf "${BUILD_DIR}"
 	rm -f "${LOCK_FILE}"
 	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
-	find "${BUILD_DIR_BASE}"/* -type d -atime +1 | rm -rf
+	find "${BUILD_DIR_BASE}"/* -type d -atime +1 -exec rm {} -rf +
 	echo "cleanup done"
 }
-
-trap cleanup TERM INT QUIT
 
 function send_mail() {
 	msg=${1}
@@ -146,54 +144,55 @@ if [[ -a ${LOCK_FILE} ]]
 then
 	echo "Already running" | tee -a "${BUILD_LOG_FILE}"
 	exit 
-else
-	touch "${LOCK_FILE}"
-	# Fetch changes
+fi
+
+trap cleanup TERM INT QUIT EXIT
+
+touch "${LOCK_FILE}"
+# Fetch changes
+pushd "${LOCAL_CHECKOUT}"
+git fetch origin master 2>&1 | tee -a "${BUILD_LOG_FILE}"
+# See if there are any incoming changes
+updates=$(git log HEAD..origin/master --oneline | wc -l)
+echo "Updates: ${updates}" | tee -a "${BUILD_LOG_FILE}"
+if [[ ${updates} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
+then
+	touch "${LOG_FILE}"
 	pushd "${LOCAL_CHECKOUT}"
-	git fetch origin master 2>&1 | tee -a "${BUILD_LOG_FILE}"
-	# See if there are any incoming changes
-	updates=$(git log HEAD..origin/master --oneline | wc -l)
-	echo "Updates: ${updates}" | tee -a "${BUILD_LOG_FILE}"
-	if [[ ${updates} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
+	echo "Pulling" | tee -a "${LOG_FILE}"
+	git pull origin master 2>&1 | tee -a "${LOG_FILE}"
+	popd
+	# This won't exist in a bit so no point pushd'ing
+	pushd "${BUILD_DIR}"
+	# Clone to NAME
+	git clone "${REPO}" "${NAME}"
+	popd
+	${PRE_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
+	EXIT_CODE="${?}"
+        if [[ ${EXIT_CODE} -ne 0 ]]
 	then
-		touch "${LOG_FILE}"
-		pushd "${LOCAL_CHECKOUT}"
-		echo "Pulling" | tee -a "${LOG_FILE}"
-		git pull origin master 2>&1 | tee -a "${LOG_FILE}"
-		popd
-		# This won't exist in a bit so no point pushd'ing
-		pushd "${BUILD_DIR}"
-		# Clone to NAME
-		git clone "${REPO}" "${NAME}"
-		popd
-		${PRE_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
-		EXIT_CODE="${?}"
-	        if [[ ${EXIT_CODE} -ne 0 ]]
-		then
-			msg="ANGRY ${NAME} on $(hostname)"
-		fi
-		pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
-		timeout "${TIMEOUT_S}" "${TEST_COMMAND}" 2>&1 | tee -a "${LOG_FILE}"
-		EXIT_CODE=$?
-		popd
-	        if [[ ${EXIT_CODE} -ne 0 ]]
-		then
-			if [[ ${EXIT_CODE} -eq 124 ]]
-			then
-				msg="ANGRY (TIMEOUT) ${NAME} on $(hostname)"
-			else
-				msg="ANGRY ${NAME} on $(hostname)"
-			fi
-		else
-			msg="HAPPY ${NAME} on $(hostname)"
-		fi
-		${POST_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
-		EXIT_CODE=$?
-	        if [[ ${EXIT_CODE} -ne 0 ]]
-		then
-			msg="ANGRY ${NAME} on $(hostname)"
-		fi
-		send_mail "${msg}"
+		msg="ANGRY ${NAME} on $(hostname)"
 	fi
-	cleanup
+	pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
+	timeout "${TIMEOUT_S}" "${TEST_COMMAND}" 2>&1 | tee -a "${LOG_FILE}"
+	EXIT_CODE=$?
+	popd
+        if [[ ${EXIT_CODE} -ne 0 ]]
+	then
+		if [[ ${EXIT_CODE} -eq 124 ]]
+		then
+			msg="ANGRY (TIMEOUT) ${NAME} on $(hostname)"
+		else
+			msg="ANGRY ${NAME} on $(hostname)"
+		fi
+	else
+		msg="HAPPY ${NAME} on $(hostname)"
+	fi
+	${POST_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
+	EXIT_CODE=$?
+        if [[ ${EXIT_CODE} -ne 0 ]]
+	then
+		msg="ANGRY ${NAME} on $(hostname)"
+	fi
+	send_mail "${msg}"
 fi
