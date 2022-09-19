@@ -5,6 +5,8 @@
 set -o pipefail
 set -o nounset
 
+set -x
+
 # Defaults
 FORCE=0
 VERBOSE=0
@@ -27,7 +29,7 @@ function show_help() {
 	cat > /dev/stdout << END
 ${0} -r <repo> -l <local_checkout> [-q <pre-script>] [-w <post-script>]
    [-m <email>] [-a <mail command>] [-t <mail command attach flag>]
-   [-s <mail command subject flag] [-e <recipients flag>] [-n name] [-d <dir>] 
+   [-s <mail command subject flag] [-e <recipients flag>] [-n name] [-d <dir>]
    [-c <command>] [-f] [-v] [-h]
 
 REQUIRED ARGS:
@@ -108,12 +110,12 @@ then
 	set -x
 fi
 
-BUILD_DIR_BASE="/tmp/${NAME}"
-BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
+readonly BUILD_DIR_BASE="/tmp/${NAME}"
+readonly BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
 mkdir -p "${BUILD_DIR}"
-LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
-BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
-LOCK_FILE="${BUILD_DIR}/${NAME}_ci.lck"
+readonly LOG_FILE="${BUILD_DIR}/${NAME}_build_${RANDOM}.log.txt"
+readonly BUILD_LOG_FILE="${BUILD_DIR}/${NAME}_build.log.txt"
+readonly LOCK_FILE="${BUILD_DIR}/${NAME}_ci.lck"
 
 function cleanup() {
 	rm -rf "${BUILD_DIR}"
@@ -124,7 +126,7 @@ function cleanup() {
 }
 
 function send_mail() {
-	msg=${1}
+	local msg=${1}
 	if [[ ${LOG_FILE} != "" ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != "" ]]
 	then
 		log_file_arg=(${MAIL_CMD_ATTACH_FLAG} ${LOG_FILE})
@@ -143,7 +145,7 @@ date 2>&1 | tee -a "${BUILD_LOG_FILE}"
 if [[ -a ${LOCK_FILE} ]]
 then
 	echo "Already running" | tee -a "${BUILD_LOG_FILE}"
-	exit 
+	exit
 fi
 
 trap cleanup TERM INT QUIT EXIT
@@ -153,9 +155,9 @@ touch "${LOCK_FILE}"
 pushd "${LOCAL_CHECKOUT}"
 git fetch origin master 2>&1 | tee -a "${BUILD_LOG_FILE}"
 # See if there are any incoming changes
-updates=$(git log HEAD..origin/master --oneline | wc -l)
-echo "Updates: ${updates}" | tee -a "${BUILD_LOG_FILE}"
-if [[ ${updates} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
+readonly UPDATES=$(git log HEAD..origin/master --oneline | wc -l)
+echo "Updates: ${UPDATES}" | tee -a "${BUILD_LOG_FILE}"
+if [[ ${UPDATES} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
 then
 	touch "${LOG_FILE}"
 	pushd "${LOCAL_CHECKOUT}"
@@ -169,30 +171,30 @@ then
 	popd
 	${PRE_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
 	EXIT_CODE="${?}"
-        if [[ ${EXIT_CODE} -ne 0 ]]
+		if [[ ${EXIT_CODE} -ne 0 ]]
 	then
-		msg="ANGRY ${NAME} on $(hostname)"
+		MSG="ANGRY ${NAME} on $(hostname)"
 	fi
 	pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}"
 	timeout "${TIMEOUT_S}" "${TEST_COMMAND}" 2>&1 | tee -a "${LOG_FILE}"
 	EXIT_CODE=$?
 	popd
-        if [[ ${EXIT_CODE} -ne 0 ]]
+	if [[ ${EXIT_CODE} -ne 0 ]]
 	then
 		if [[ ${EXIT_CODE} -eq 124 ]]
 		then
-			msg="ANGRY (TIMEOUT) ${NAME} on $(hostname)"
+			MSG="ANGRY (TIMEOUT) ${NAME} on $(hostname)"
 		else
-			msg="ANGRY ${NAME} on $(hostname)"
+			MSG="ANGRY ${NAME} on $(hostname)"
 		fi
 	else
-		msg="HAPPY ${NAME} on $(hostname)"
+		MSG="HAPPY ${NAME} on $(hostname)"
 	fi
 	${POST_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
 	EXIT_CODE=$?
-        if [[ ${EXIT_CODE} -ne 0 ]]
+	if [[ ${EXIT_CODE} -ne 0 ]]
 	then
-		msg="ANGRY ${NAME} on $(hostname)"
+		MSG="ANGRY ${NAME} on $(hostname)"
 	fi
-	send_mail "${msg}"
+	send_mail "${MSG}"
 fi
