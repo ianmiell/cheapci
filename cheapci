@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Simple CI
+# Simple CI script. Checks out a repository, checks for any changes, and runs a passed-in test command assumed to be in the repository.
+# If the test passes,
 
-# OREILLY: Options. Note the pipefail.
-set -o pipefail
-set -o nounset
+# Options. Note the pipefail.
+set -o pipefail -o nounset
 
-# OREILLY: Global variables in bold.
+# Global variables in bold by convention.
 # Defaults
 FORCE=0
 VERBOSE=0
@@ -23,14 +23,14 @@ PRE_SCRIPT="/bin/true"
 POST_SCRIPT="/bin/true"
 TIMEOUT_S=86400
 
-# OREILLY: Variable defaults
+# Variable defaults
 PAGER=${PAGER:-more}
 
-# OREILLY: Functions
+# Functions
 function show_help() {
-	# OREILLY: Here doc, note _not_ in quotes, as we want vars to be substituted in.
-	# OREILLY: Note that the here doc uses <<- to allow tabbing (must use tabs, try with spaces)
-	# OREILLY: Note argument zero too
+	# Here doc, note _not_ in quotes, as we want vars to be substituted in.
+	# Note that the here doc uses <<- to allow tabbing (must use tabs)
+	# Note argument zero used here
 	cat > /dev/stdout <<- END
 		${0} -r <repo> -l <local_checkout> [-q <pre-script>] [-w <post-script>]
 		   [-m <email>] [-a <mail command>] [-t <mail command attach flag>]
@@ -73,14 +73,14 @@ function show_help() {
 END
 }
 
-# OREILLY: while loop, and getopts
+# while loop, and getopts
 while getopts "h?vfm:n:d:r:l:c:a:q:w:t:e:s:i:" opt
 do
-	# OREILLY: case statement
+	# case statement
 	case "${opt}" in
 	h|\?)
 		show_help
-		# OREILLY: exit code
+		# exit code
 		exit 0
 		;;
 	v) VERBOSE=1 ;;
@@ -101,14 +101,14 @@ do
 	esac
 done
 
-# OREILLY: shift builtin - look it up
+# shift builtin - look it up
 shift "$((OPTIND-1))"
 
-# OREILLY: if statement, double square bracket
+# if statement, double square bracket
 if [[ ${REPO} = "" ]]
 then
 	show_help
-	# OREILLY: exit with a non-zero exit code
+	# exit with a non-zero exit code
 	exit 1
 fi
 
@@ -118,7 +118,7 @@ then
 	set -x
 fi
 
-# OREILLY: readonly, best practice as these should not get overwritten
+# readonly, best practice as these should not get overwritten
 readonly BUILD_DIR_BASE="/tmp/${NAME}"
 readonly BUILD_DIR="${BUILD_DIR_BASE}/${NAME}_builddir"
 mkdir -p "${BUILD_DIR}"
@@ -129,8 +129,9 @@ readonly LOCK_FILE="${BUILD_DIR}/${NAME}_ci.lck"
 function cleanup() {
 	rm -rf "${BUILD_DIR}"
 	rm -f "${LOCK_FILE}"
-	# get rid of /tmp detritus, leaving anything accessed 2 days ago+
-	find "${BUILD_DIR_BASE}"/* -type d -atime +1 -exec rm {} -rf +
+	# Get rid of any possible build folder detritus from eg failed builds, leaving anything accessed < 1 days ago
+	# Redirect errors to special /dev/null file
+	find "${BUILD_DIR_BASE}"/* -type d -atime -1 -exec rm {} -rf \; 2>/dev/null
 	echo "cleanup done"
 }
 
@@ -140,7 +141,7 @@ function send_mail() {
 	msg="${1}"
 	if [[ ${LOG_FILE} != "" ]] && [[ ${MAIL_CMD_ATTACH_FLAG} != "" ]]
 	then
-		# OREILLY: parentheses used to group quoted items
+		# parentheses used to group quoted items
 		log_file_arg=("${MAIL_CMD_ATTACH_FLAG}" "${LOG_FILE}")
 	fi
 	if [[ "${EMAIL}" != "" ]] && [[ "${MAIL_CMD}" != "" ]]
@@ -151,7 +152,7 @@ function send_mail() {
 	fi
 }
 
-# OREILLY: Redirect stderr to whatever stdout is pointed at. Pipe everything using tee to append to the log file.
+# Redirect stderr to whatever stdout is pointed at. Pipe everything using tee to append to the log file.
 date 2>&1 | tee -a "${BUILD_LOG_FILE}"
 
 # If the lockfile exists, quite
@@ -161,31 +162,30 @@ then
 	exit
 fi
 
-# OREILLY: Trap any signals, calling the cleanup function defined above.
+# Trap any signals, calling the cleanup function defined above.
 trap cleanup TERM INT QUIT EXIT
 
 # Create the lock file
 touch "${LOCK_FILE}"
-pushd "${LOCAL_CHECKOUT}" || exit 1
+pushd "${LOCAL_CHECKOUT}" > /dev/null || exit 1
 # Fetch changes
 git fetch origin master 2>&1 | tee -a "${BUILD_LOG_FILE}"
 # See if there are any changes since last run
-readonly UPDATES
-UPDATES="$(git log HEAD..origin/master --oneline | wc -l)"
+readonly UPDATES="$(git log HEAD..origin/master --oneline | wc -l)"
 echo "Number of updates: ${UPDATES}" | tee -a "${BUILD_LOG_FILE}"
 # If there are updates, or we have specified to force a run...
 if [[ ${UPDATES} -gt 0 ]] || [[ ${FORCE} -gt 0 ]]
 then
 	touch "${LOG_FILE}"
-	pushd "${LOCAL_CHECKOUT}" || exit 1
+	pushd "${LOCAL_CHECKOUT}" > /dev/null || exit 1
 	echo "Pulling" | tee -a "${LOG_FILE}"
 	git pull origin master 2>&1 | tee -a "${LOG_FILE}"
-	popd || exit 1
+	popd > /dev/null || exit 1
 	# This won't exist in a bit so no point pushd'ing
-	pushd "${BUILD_DIR}" || exit 1
+	pushd "${BUILD_DIR}" > /dev/null || exit 1
 	# Clone to NAME
 	git clone "${REPO}" "${NAME}"
-	popd || exit 1
+	popd > /dev/null || exit 1
 	${PRE_SCRIPT} 2>&1 | tee -a "${LOG_FILE}"
 	EXIT_CODE="${?}"
 	if [[ ${EXIT_CODE} -ne 0 ]]
@@ -193,12 +193,12 @@ then
 		MSG="ANGRY ${NAME} on $(hostname)"
 	fi
 	# Go to the test directory.
-	pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}" || exit 1
+	pushd "${BUILD_DIR}"/"${NAME}"/"${TEST_DIR}" > /dev/null || exit 1
 	# Timeout runs a command with a time limit. Run the test command.
 	timeout "${TIMEOUT_S}" "${TEST_COMMAND}" 2>&1 | tee -a "${LOG_FILE}"
 	# Get the exit code of the test command.
 	EXIT_CODE=$?
-	popd || exit 1
+	popd > /dev/null || exit 1
 	# If it did not pass, report as such.
 	if [[ ${EXIT_CODE} -ne 0 ]]
 	then
@@ -223,4 +223,4 @@ then
 	send_mail "${MSG}"
 fi
 # Pop the pushd we did before the git fetch above.
-popd || exit 1
+popd > /dev/null || exit 1
